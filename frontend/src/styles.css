@@ -1,0 +1,29 @@
+.app-shell {
+  min-height: 100vh;
+  transition: all 0.2s ease;
+}
+
+.app-shell.light {
+  background: #f8f9fa;
+  color: #212529;
+}
+
+.app-shell.dark {
+  background: #121212;
+  color: #f8f9fa;
+}
+
+.app-shell.dark .card {
+  background: #1f1f1f;
+  color: #f8f9fa;
+}
+
+.video-panel {
+  min-height: 360px;
+}
+
+.status-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
