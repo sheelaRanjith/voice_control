@@ -179,3 +179,14 @@ cd ..
 git checkout -- backend/app.py
 python backend/app.py
 ```
+
+
+If you want an automatic local repair, use the helper script in this repo:
+
+```powershell
+cd ..
+python scripts/repair_merge_conflicts.py backend/app.py --take ours
+python backend/app.py
+```
+
+(Use `--take theirs` if you want to keep the lower half of each conflict block.)
