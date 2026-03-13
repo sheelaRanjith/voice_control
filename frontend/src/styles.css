@@ -21,3 +21,9 @@
 .video-panel {
   min-height: 360px;
 }
+
+.status-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
