@@ -50,7 +50,11 @@ function App() {
   const onVoiceResult = (payload) => {
     setLastCommand(payload.command || 'None');
     setFeedback(payload.feedback || '');
-    setObjects(payload.all_objects || []);
+    if (payload.intent?.intent === 'find') {
+      setObjects(payload.matched_objects || []);
+    } else {
+      setObjects(payload.all_objects || []);
+    }
   };
 
   const resetState = () => {
