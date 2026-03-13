@@ -3,5 +3,4 @@ flask-cors==4.0.0
 opencv-python==4.9.0.80
 speechrecognition==3.10.1
 PyAudio==0.2.14
-# Required by backend/train_model.py
 ultralytics==8.2.0
