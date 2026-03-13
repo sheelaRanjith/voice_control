@@ -21,6 +21,7 @@ _detector = RealtimeDetector(camera_index=0, model_path="yolov8n.pt", conf=0.35)
 _detector.start()
 _voice = VoiceRecognizer()
 _tts = SpeechSynthesizer(language="en")
+_state = {"last_command": "", "last_feedback": ""}
 _last_command = ""
 _last_feedback = ""
 
@@ -66,6 +67,10 @@ def status() -> Response:
         {
             "backend": "ok",
             "detector": _detector.status(),
+            "last_command": _state["last_command"],
+            "last_feedback": _state["last_feedback"],
+        }
+    )
             "last_command": _last_command,
             "last_feedback": _last_feedback,
         }
@@ -87,6 +92,13 @@ def voice_command() -> Response:
     if not transcript:
         return jsonify({"status": "no_command", "command": "", "feedback": "No command received."}), 400
 
+    normalized = _voice.normalize_command(transcript)
+    intent = _voice.parse_intent(normalized)
+    detections = _detector.get_detections()
+    feedback, matched = build_guidance(intent, detections)
+
+    _state["last_command"] = normalized
+    _state["last_feedback"] = feedback
     _last_command = _voice.normalize_command(transcript)
     intent = _voice.parse_intent(_last_command)
     detections = _detector.get_detections()
@@ -100,6 +112,7 @@ def voice_command() -> Response:
     return jsonify(
         {
             "status": "ok",
+            "command": normalized,
             "command": _last_command,
             "intent": intent,
             "feedback": feedback,
@@ -125,6 +138,7 @@ def voice_command() -> Response:
 
 @app.route("/navigation_feedback")
 def navigation_feedback() -> Response:
+    return jsonify({"feedback": _state["last_feedback"], "last_command": _state["last_command"]})
     return jsonify({"feedback": _last_feedback, "last_command": _last_command})
     feedback = build_navigation_feedback(_last_command, _detector.last_detections)
     return jsonify({"feedback": feedback, "last_command": _last_command})
@@ -153,6 +167,8 @@ def _cleanup() -> None:
 
 
 if __name__ == "__main__":
+    # `use_reloader=False` avoids duplicate camera/process issues and WinError 10038 socket edge-cases on Windows.
+    app.run(host="0.0.0.0", port=8000, threaded=True, debug=False, use_reloader=False)
     app.run(host="0.0.0.0", port=8000, threaded=True, debug=False)
     _detector.release()
 

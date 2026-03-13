@@ -150,6 +150,29 @@ Server/container may not expose an audio device. API still returns text guidance
 - Save periodic snapshots from `/snapshot` to disk.
 - Add multilingual TTS/ASR pipeline.
 - Mobile camera feed support by replacing webcam input with RTSP/WebRTC source.
+
+
+### `SyntaxError: name '_last_command' is used prior to global declaration`
+
+Use the latest `backend/app.py`. The backend now stores runtime values in a shared `_state` dictionary (no `global` declarations needed), which removes this error source.
+
+### `OSError: [WinError 10038]` while stopping/restarting Flask
+
+Run backend without the Werkzeug reloader:
+
+```powershell
+cd .\backend
+python app.py
+```
+
+This project now starts Flask with `use_reloader=False` by default to avoid duplicate-socket/reloader issues on Windows.
+
+For a more production setup on Windows, run with Waitress:
+
+```powershell
+pip install waitress
+python -m waitress --listen=0.0.0.0:8000 app:app
+```
 ## 3) Model training script (fix for missing file error)
 
 If you ran `python train_model.py` and got `No such file or directory`, pull the latest code and run from inside `backend/` where `train_model.py` now exists.
