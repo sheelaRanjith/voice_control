@@ -179,3 +179,49 @@ cd ..
 git checkout -- backend/app.py
 python backend/app.py
 ```
+
+
+If you want an automatic local repair, use the helper script in this repo:
+
+```powershell
+cd ..
+python scripts/repair_merge_conflicts.py backend/app.py --take ours
+python backend/app.py
+```
+
+(Use `--take theirs` if you want to keep the lower half of each conflict block.)
+
+
+### `_pickle.UnpicklingError: Weights only load failed` (PyTorch 2.6+)
+
+PyTorch 2.6 changed default `torch.load(..., weights_only=True)` behavior and some YOLO checkpoints fail to load.
+
+This repo now includes two protections:
+- `backend/requirements.txt` pins `torch<2.6`
+- `backend/detector.py` applies a compatibility fallback (`add_safe_globals` + `TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD`) before retrying model load.
+
+Recommended fix in existing venv:
+
+```powershell
+cd .\backend
+pip uninstall -y torch torchvision torchaudio
+pip install "torch<2.6"
+pip install -r requirements.txt
+python app.py
+```
+
+
+### Voice speaks only once and then becomes silent
+
+`pyttsx3` can sometimes stop responding after the first `runAndWait()` call in long-running Flask apps.
+
+This repo now uses an async TTS queue worker (`SpeechSynthesizer`) that keeps speaking across repeated commands (`find`, `detect`, `navigate`).
+
+If you still face issues on Windows:
+
+```powershell
+cd .\backend
+python app.py
+```
+
+and avoid running multiple app instances at the same time.

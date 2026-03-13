@@ -3,6 +3,8 @@ flask-cors==4.0.0
 opencv-python==4.9.0.80
 numpy>=1.26.4,<2
 ultralytics==8.2.0
+# Torch 2.6 changed torch.load defaults; pinning <2.6 avoids common YOLO checkpoint load issues.
+torch<2.6
 speechrecognition==3.10.1
 PyAudio==0.2.14
 pyttsx3==2.90

@@ -110,6 +110,7 @@ def health() -> Response:
 @atexit.register
 def _cleanup() -> None:
     _detector.stop()
+    _tts.shutdown()
 
 
 if __name__ == "__main__":

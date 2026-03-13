@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import pickle
 import threading
 import time
 from dataclasses import dataclass
@@ -41,7 +43,9 @@ class RealtimeDetector:
     def __init__(self, camera_index: int = 0, model_path: str = "yolov8n.pt", conf: float = 0.35) -> None:
         self.camera_index = camera_index
         self.conf = conf
-        self.model = YOLO(model_path)
+        self.last_error = ""
+
+        self.model = self._load_model(model_path)
         self.capture = cv2.VideoCapture(camera_index)
 
         self.lock = threading.Lock()
@@ -52,8 +56,39 @@ class RealtimeDetector:
         self.last_raw_frame = None
         self.last_detections: List[Dict[str, Any]] = []
         self.last_updated = 0.0
-        self.last_error = ""
         self.fps = 0.0
+
+    def _enable_torch_safe_globals(self) -> None:
+        """Enable compatibility for PyTorch>=2.6 weights_only default behavior."""
+        try:
+            import torch
+            from ultralytics.nn.tasks import DetectionModel
+
+            os.environ.setdefault("TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD", "1")
+            torch.serialization.add_safe_globals([DetectionModel])
+        except Exception:
+            # If workaround cannot be applied, we still retry with regular load path.
+            pass
+
+    def _load_model(self, model_path: str):
+        try:
+            return YOLO(model_path)
+        except pickle.UnpicklingError as exc:
+            self._enable_torch_safe_globals()
+            try:
+                return YOLO(model_path)
+            except Exception as retry_exc:
+                self.last_error = f"Model load failed after torch safety workaround: {retry_exc}"
+                raise retry_exc from exc
+        except Exception as exc:
+            if "Weights only load failed" in str(exc):
+                self._enable_torch_safe_globals()
+                try:
+                    return YOLO(model_path)
+                except Exception as retry_exc:
+                    self.last_error = f"Model load failed after torch safety workaround: {retry_exc}"
+                    raise retry_exc from exc
+            raise
 
     def start(self) -> None:
         if self.running:
@@ -90,45 +125,51 @@ class RealtimeDetector:
             detections: List[Dict[str, Any]] = []
             frame_h, frame_w = frame.shape[:2]
             frame_area = frame_h * frame_w
-            result = self.model.predict(source=frame, conf=self.conf, verbose=False)[0]
 
-            for box in result.boxes:
-                cls_id = int(box.cls[0])
-                conf = float(box.conf[0])
-                x1, y1, x2, y2 = [int(v) for v in box.xyxy[0].tolist()]
-                w = max(0, x2 - x1)
-                h = max(0, y2 - y1)
-                center_x = x1 + w // 2
-                center_y = y1 + h // 2
-                label = self.model.names.get(cls_id, str(cls_id))
-                position = self._classify_position(center_x, frame_w)
-                distance_hint = self._distance_hint(w * h, frame_area)
+            try:
+                result = self.model.predict(source=frame, conf=self.conf, verbose=False)[0]
+            except Exception as exc:
+                self.last_error = f"Model inference failed: {exc}"
+                result = None
 
-                det = DetectionResult(
-                    label=label,
-                    confidence=conf,
-                    x=x1,
-                    y=y1,
-                    w=w,
-                    h=h,
-                    center_x=center_x,
-                    center_y=center_y,
-                    position=position,
-                    distance_hint=distance_hint,
-                )
-                detections.append(det.to_dict())
+            if result is not None:
+                for box in result.boxes:
+                    cls_id = int(box.cls[0])
+                    conf = float(box.conf[0])
+                    x1, y1, x2, y2 = [int(v) for v in box.xyxy[0].tolist()]
+                    w = max(0, x2 - x1)
+                    h = max(0, y2 - y1)
+                    center_x = x1 + w // 2
+                    center_y = y1 + h // 2
+                    label = self.model.names.get(cls_id, str(cls_id))
+                    position = self._classify_position(center_x, frame_w)
+                    distance_hint = self._distance_hint(w * h, frame_area)
 
-                color = (0, 200, 0)
-                cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-                cv2.putText(
-                    frame,
-                    f"{label} {conf:.2f} {position}/{distance_hint}",
-                    (x1, max(20, y1 - 10)),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.55,
-                    color,
-                    2,
-                )
+                    det = DetectionResult(
+                        label=label,
+                        confidence=conf,
+                        x=x1,
+                        y=y1,
+                        w=w,
+                        h=h,
+                        center_x=center_x,
+                        center_y=center_y,
+                        position=position,
+                        distance_hint=distance_hint,
+                    )
+                    detections.append(det.to_dict())
+
+                    color = (0, 200, 0)
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+                    cv2.putText(
+                        frame,
+                        f"{label} {conf:.2f} {position}/{distance_hint}",
+                        (x1, max(20, y1 - 10)),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.55,
+                        color,
+                        2,
+                    )
 
             now = time.time()
             dt = now - prev
@@ -146,7 +187,6 @@ class RealtimeDetector:
                 self.last_frame_jpeg = encoded.tobytes()
                 self.last_detections = detections
                 self.last_updated = now
-                self.last_error = ""
 
     def get_frame_jpeg(self) -> Optional[bytes]:
         with self.lock:

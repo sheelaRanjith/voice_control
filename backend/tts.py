@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import queue
 import re
-from typing import Dict, List, Tuple
+import threading
+from typing import Dict, List, Optional, Tuple
 
 import pyttsx3
 
@@ -15,17 +17,52 @@ TARGET_ALIASES = {
 
 
 class SpeechSynthesizer:
+    """Thread-safe async TTS queue so voice works for repeated commands."""
+
     def __init__(self, language: str = "en") -> None:
-        self.engine = pyttsx3.init()
         self.language = language
-        self.engine.setProperty("rate", 170)
+        self._engine = self._create_engine()
+        self._queue: queue.Queue[Optional[str]] = queue.Queue()
+        self._worker = threading.Thread(target=self._run, daemon=True)
+        self._worker.start()
+
+    @staticmethod
+    def _create_engine():
+        engine = pyttsx3.init()
+        engine.setProperty("rate", 170)
+        return engine
+
+    def _run(self) -> None:
+        while True:
+            text = self._queue.get()
+            if text is None:
+                break
+            try:
+                self._engine.say(text)
+                self._engine.runAndWait()
+            except Exception:
+                # Recreate engine to recover from occasional pyttsx3 one-shot failures.
+                try:
+                    self._engine.stop()
+                except Exception:
+                    pass
+                try:
+                    self._engine = self._create_engine()
+                    self._engine.say(text)
+                    self._engine.runAndWait()
+                except Exception:
+                    pass
+            finally:
+                self._queue.task_done()
 
     def speak(self, text: str) -> None:
-        try:
-            self.engine.say(text)
-            self.engine.runAndWait()
-        except Exception:
-            pass
+        if text:
+            self._queue.put(text)
+
+    def shutdown(self) -> None:
+        self._queue.put(None)
+        if self._worker.is_alive():
+            self._worker.join(timeout=2)
 
 
 def _normalize_target(target: str) -> str:
