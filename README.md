@@ -225,3 +225,14 @@ python app.py
 ```
 
 and avoid running multiple app instances at the same time.
+
+
+### Frontend audio not audible (`audio kekkala`)
+
+The UI now has a browser-side **Audio On/Off** toggle.
+When a command response arrives, the frontend uses `window.speechSynthesis` to speak feedback on the user's machine.
+
+If still silent:
+- click anywhere on the page once (some browsers require user interaction before audio),
+- keep Audio set to `On`,
+- check system/browser volume and output device.

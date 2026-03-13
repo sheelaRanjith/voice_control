@@ -18,6 +18,7 @@ function App() {
   const [cameraOpen, setCameraOpen] = useState(false);
   const [fps, setFps] = useState(0);
   const [backendError, setBackendError] = useState('');
+  const [audioEnabled, setAudioEnabled] = useState(true);
 
   useEffect(() => {
     if (!isRunning) return undefined;
@@ -47,14 +48,30 @@ function App() {
     return () => clearInterval(interval);
   }, [isRunning, backendUrl]);
 
+  const speakInBrowser = (text) => {
+    if (!audioEnabled || !text) return;
+    if (!window.speechSynthesis) return;
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    utterance.rate = 1;
+    window.speechSynthesis.speak(utterance);
+  };
+
   const onVoiceResult = (payload) => {
-    setLastCommand(payload.command || 'None');
-    setFeedback(payload.feedback || '');
+    const newCommand = payload.command || 'None';
+    const newFeedback = payload.feedback || '';
+
+    setLastCommand(newCommand);
+    setFeedback(newFeedback);
     if (payload.intent?.intent === 'find') {
       setObjects(payload.matched_objects || []);
     } else {
       setObjects(payload.all_objects || []);
     }
+
+    speakInBrowser(newFeedback);
   };
 
   const resetState = () => {
@@ -64,6 +81,9 @@ function App() {
     setFeedback('');
     setSnapshotUrl('');
     setBackendError('');
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
   };
 
   return (
@@ -71,9 +91,14 @@ function App() {
       <div className="container py-4">
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h2 className="mb-0">Smart Vision Voice Navigation</h2>
-          <button className="btn btn-outline-secondary" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
-            Toggle {theme === 'light' ? 'Dark' : 'Light'} Theme
-          </button>
+          <div className="d-flex gap-2">
+            <button className="btn btn-outline-secondary" onClick={() => setAudioEnabled(!audioEnabled)}>
+              Audio: {audioEnabled ? 'On' : 'Off'}
+            </button>
+            <button className="btn btn-outline-secondary" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
+              Toggle {theme === 'light' ? 'Dark' : 'Light'} Theme
+            </button>
+          </div>
         </div>
 
         <div className="status-row mb-3">
