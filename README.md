@@ -155,3 +155,27 @@ python -m waitress --listen=0.0.0.0:8000 app:app
 - `find water bottle` now maps to YOLO label `bottle`.
 - `find calendar` uses alias matching (`calendar`, `clock`, `book`) because COCO models usually do not have a dedicated `calendar` class.
 - If browser speech recognition hears a wrong word, use **text command** or **Upload Audio** in UI for better control.
+
+
+### `SyntaxError: invalid decimal literal` with `>>>>>>>` in `app.py`
+
+Your local file still contains unresolved Git merge conflict markers.
+
+Check and clean markers:
+
+```powershell
+cd .\backend
+findstr /n "<<<<<<< ======= >>>>>>>" app.py
+```
+
+Then either:
+1. discard local conflicted file and restore from git, or
+2. manually remove `<<<<<<<`, `=======`, `>>>>>>>` blocks and keep the correct code.
+
+Quick restore (if you want repo version):
+
+```powershell
+cd ..
+git checkout -- backend/app.py
+python backend/app.py
+```
