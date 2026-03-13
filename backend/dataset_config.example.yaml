@@ -1,0 +1,13 @@
+# Example Ultralytics dataset configuration.
+# Copy to your own file (e.g. dataset.yaml) and update paths/classes.
+
+path: ../data
+train: images/train
+val: images/val
+
+# test: images/test
+
+names:
+  0: person
+  1: chair
+  2: door
