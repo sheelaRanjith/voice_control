@@ -63,6 +63,12 @@ function VoiceControl({ backendUrl, onResult }) {
 
         <small className="text-muted">Examples: find chair, detect objects, navigate right.</small>
         {error && <p className="text-danger mb-0">{error}</p>}
+      <div className="card-header">Voice Command Status</div>
+      <div className="card-body">
+        <button className="btn btn-primary" onClick={startListening} disabled={listening}>
+          {listening ? 'Listening...' : 'Speak Command'}
+        </button>
+        {error && <p className="text-danger mt-2 mb-0">{error}</p>}
       </div>
     </div>
   );

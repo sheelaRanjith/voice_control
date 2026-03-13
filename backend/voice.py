@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import re
 from typing import Dict, Optional
+from typing import Optional
 
 import speech_recognition as sr
 
@@ -46,3 +47,4 @@ class VoiceRecognizer:
             return {"intent": "navigate", "target": direction, "raw": normalized}
 
         return {"intent": "unknown", "target": "", "raw": normalized}
+        return text.strip().lower()

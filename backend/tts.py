@@ -46,3 +46,19 @@ def build_guidance(intent: Dict[str, str], detections: List[Dict]) -> Tuple[str,
         return "Navigation command not understood.", detections
 
     return "Command not recognized. Try find person or detect objects.", detections
+from typing import List, Dict
+
+
+def build_navigation_feedback(last_command: str, detections: List[Dict]) -> str:
+    if not detections:
+        return "No objects detected. Proceed cautiously."
+
+    labels = ", ".join(sorted({det['label'] for det in detections}))
+
+    if "left" in last_command:
+        return f"Turning left. Nearby detections: {labels}."
+    if "right" in last_command:
+        return f"Turning right. Nearby detections: {labels}."
+    if "stop" in last_command:
+        return f"Stop command acknowledged. Monitoring: {labels}."
+    return f"Detected: {labels}. Continue forward."
